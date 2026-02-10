@@ -24,6 +24,21 @@ services:
     depends_on:
       - db
 
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://reason:reason@db:5432/reason
+    volumes:
+      - /Users/darkbit1001/workspace:/workspace:rw
+    depends_on:
+      - db
+    stdin_open: true
+    command: ["python", "-m", "app.mcp_server"]
+    profiles:
+      - mcp
+
   test:
     build:
       context: .
