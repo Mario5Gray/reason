@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - reason_pg:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
 
   api:
     volumes:
@@ -22,6 +23,17 @@ services:
       - "8000:8000"
     depends_on:
       - db
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://reason:reason@db:5432/reason_test
+      PYTHONPATH: /app
+    depends_on:
+      - db
+    command: ["/bin/sh", "-lc", "python /app/scripts/ensure_test_db.py && pytest -q"]
 
 volumes:
   reason_pg:

@@ -1,5 +1,4 @@
 import os
-import tempfile
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,16 +9,15 @@ from app.main import app, get_db
 
 @pytest.fixture(scope="session")
 def db_engine():
-    db_fd, db_path = tempfile.mkstemp(prefix="reason_test_", suffix=".db")
-    os.close(db_fd)
-    engine = create_engine(f"sqlite:///{db_path}")
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        pytest.skip("DATABASE_URL not set; containerized tests require Postgres")
+    engine = create_engine(database_url)
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield engine
+    Base.metadata.drop_all(bind=engine)
     engine.dispose()
-    try:
-        os.remove(db_path)
-    except FileNotFoundError:
-        pass
 
 
 @pytest.fixture()

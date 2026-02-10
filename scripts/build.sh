@@ -27,5 +27,5 @@ fi
 
 # Optionally run tests
 if [[ "${1-}" == "--test" || "${2-}" == "--test" || "${3-}" == "--test" || "${4-}" == "--test" ]]; then
-  docker compose exec api pytest -q
+  docker compose run --rm test
 fi
