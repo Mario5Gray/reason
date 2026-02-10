@@ -43,3 +43,15 @@ class SourceSliceResponse(BaseModel):
     start_byte: int
     end_byte: int
     text: str
+
+class RunResponse(BaseModel):
+    id: int
+    language: str
+    root_path: str | None
+    created_at: str | None
+
+class RunListResponse(BaseModel):
+    results: list[RunResponse]
+
+class FileListResponse(BaseModel):
+    results: list[FileResponse]

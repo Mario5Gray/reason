@@ -56,3 +56,29 @@ def test_ingest_query_and_source(client, tmp_path: Path):
     )
     assert source.status_code == 200
     assert "class Foo" in source.json()["text"]
+
+
+def test_list_runs(client, tmp_path):
+    sample = tmp_path / "sample.py"
+    sample.write_text("def foo(): pass\n")
+    client.post("/ingest", json={"language": "python", "files": [str(sample)]})
+
+    resp = client.get("/runs")
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    assert len(results) >= 1
+    assert "language" in results[0]
+    assert "id" in results[0]
+
+
+def test_list_run_files(client, tmp_path):
+    sample = tmp_path / "sample.py"
+    sample.write_text("def foo(): pass\n")
+    resp = client.post("/ingest", json={"language": "python", "files": [str(sample)]})
+    run_id = resp.json()["run_id"]
+
+    resp = client.get(f"/runs/{run_id}/files")
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    assert len(results) == 1
+    assert results[0]["path"] == str(sample)

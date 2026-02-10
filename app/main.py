@@ -9,10 +9,13 @@ from .schemas import (
     FileResponse,
     NodeResponse,
     SourceSliceResponse,
+    RunListResponse,
+    FileListResponse,
 )
 from .ingest import ingest_files
-from .query import query_nodes, query_defs, query_calls
+from .query import query_nodes, query_defs, query_calls, list_runs, list_run_files
 from .models import AstNode, SourceFile
+from .serializers import serialize_node_summary, serialize_node_detail, serialize_file, serialize_run
 
 app = FastAPI(title="reason")
 
@@ -41,18 +44,7 @@ def query(
     db: Session = Depends(get_db),
 ):
     nodes = query_nodes(db, kind=kind, name=name, limit=limit, run_id=run_id, file_id=file_id)
-    results = [
-        {
-            "id": n.id,
-            "file_id": n.file_id,
-            "kind": n.kind,
-            "name": n.name,
-            "start": [n.start_line, n.start_col],
-            "end": [n.end_line, n.end_col],
-        }
-        for n in nodes
-    ]
-    return QueryResponse(results=results)
+    return QueryResponse(results=[serialize_node_summary(n) for n in nodes])
 
 
 @app.get("/files/{file_id}", response_model=FileResponse)
@@ -60,13 +52,7 @@ def get_file(file_id: int, db: Session = Depends(get_db)):
     file = db.get(SourceFile, file_id)
     if not file:
         raise HTTPException(status_code=404, detail="file not found")
-    return FileResponse(
-        id=file.id,
-        run_id=file.run_id,
-        path=file.path,
-        content_hash=file.content_hash,
-        size_bytes=file.size_bytes,
-    )
+    return FileResponse(**serialize_file(file))
 
 
 @app.get("/nodes/{node_id}", response_model=NodeResponse)
@@ -74,18 +60,7 @@ def get_node(node_id: int, db: Session = Depends(get_db)):
     node = db.get(AstNode, node_id)
     if not node:
         raise HTTPException(status_code=404, detail="node not found")
-    return NodeResponse(
-        id=node.id,
-        file_id=node.file_id,
-        kind=node.kind,
-        name=node.name,
-        parent_id=node.parent_id,
-        start=[node.start_line, node.start_col],
-        end=[node.end_line, node.end_col],
-        start_byte=node.start_byte,
-        end_byte=node.end_byte,
-        meta=node.meta,
-    )
+    return NodeResponse(**serialize_node_detail(node))
 
 
 @app.post("/source", response_model=SourceSliceResponse)
@@ -111,18 +86,7 @@ def query_defs_endpoint(
     db: Session = Depends(get_db),
 ):
     nodes = query_defs(db, name=name, limit=limit, run_id=run_id, file_id=file_id)
-    results = [
-        {
-            "id": n.id,
-            "file_id": n.file_id,
-            "kind": n.kind,
-            "name": n.name,
-            "start": [n.start_line, n.start_col],
-            "end": [n.end_line, n.end_col],
-        }
-        for n in nodes
-    ]
-    return QueryResponse(results=results)
+    return QueryResponse(results=[serialize_node_summary(n) for n in nodes])
 
 
 @app.get("/query/calls", response_model=QueryResponse)
@@ -134,15 +98,16 @@ def query_calls_endpoint(
     db: Session = Depends(get_db),
 ):
     nodes = query_calls(db, name=name, limit=limit, run_id=run_id, file_id=file_id)
-    results = [
-        {
-            "id": n.id,
-            "file_id": n.file_id,
-            "kind": n.kind,
-            "name": n.name,
-            "start": [n.start_line, n.start_col],
-            "end": [n.end_line, n.end_col],
-        }
-        for n in nodes
-    ]
-    return QueryResponse(results=results)
+    return QueryResponse(results=[serialize_node_summary(n) for n in nodes])
+
+
+@app.get("/runs", response_model=RunListResponse)
+def list_runs_endpoint(limit: int = 50, db: Session = Depends(get_db)):
+    runs = list_runs(db, limit=limit)
+    return RunListResponse(results=[serialize_run(r) for r in runs])
+
+
+@app.get("/runs/{run_id}/files", response_model=FileListResponse)
+def list_run_files_endpoint(run_id: int, limit: int = 200, db: Session = Depends(get_db)):
+    files = list_run_files(db, run_id=run_id, limit=limit)
+    return FileListResponse(results=[serialize_file(f) for f in files])
