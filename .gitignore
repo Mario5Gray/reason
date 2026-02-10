@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Env
+.env
+.env.*
+.envrc
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+
+# Build / dist
+build/
+dist/
+
+# Logs
+*.log
+
+# NFS temp files
+.nfs*
