@@ -13,7 +13,7 @@ services:
 
   api:
     volumes:
-      - /Users/darkbit1001/workspace:/workspace:rw
+      - ${WORKSPACE_DIR}:/workspace:rw
     build:
       context: .
       dockerfile: Dockerfile
@@ -31,7 +31,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://reason:reason@db:5432/reason
     volumes:
-      - /Users/darkbit1001/workspace:/workspace:rw
+      - ${WORKSPACE_DIR}:/workspace:rw
     depends_on:
       - db
     stdin_open: true
