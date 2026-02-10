@@ -36,12 +36,13 @@ def ingest_files(db: Session, language: str, files: list[str], root_path: str | 
         db.add(cst)
 
         ast_nodes = extract_ast_like(language, tree)
+        node_models: list[AstNode] = []
         for n in ast_nodes:
-            db.add(AstNode(
+            node_models.append(AstNode(
                 file_id=file_rec.id,
                 kind=n.kind,
                 name=n.name,
-                parent_id=None if n.parent_idx is None else n.parent_idx,
+                parent_id=None,
                 start_byte=n.start_byte,
                 end_byte=n.end_byte,
                 start_line=n.start_line,
@@ -50,6 +51,12 @@ def ingest_files(db: Session, language: str, files: list[str], root_path: str | 
                 end_col=n.end_col,
                 meta=n.meta,
             ))
+        db.add_all(node_models)
+        db.flush()
+        # Map parent indices to persisted node ids within the same file.
+        for idx, n in enumerate(ast_nodes):
+            if n.parent_idx is not None:
+                node_models[idx].parent_id = node_models[n.parent_idx].id
 
     db.commit()
     return run.id

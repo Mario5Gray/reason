@@ -1,9 +1,17 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .db import SessionLocal
-from .schemas import IngestRequest, IngestResponse, QueryResponse, SourceSliceRequest, FileResponse, NodeResponse, SourceSliceResponse
+from .schemas import (
+    IngestRequest,
+    IngestResponse,
+    QueryResponse,
+    SourceSliceRequest,
+    FileResponse,
+    NodeResponse,
+    SourceSliceResponse,
+)
 from .ingest import ingest_files
-from .query import query_nodes
+from .query import query_nodes, query_defs, query_calls
 from .models import AstNode, SourceFile
 
 app = FastAPI(title="reason")
@@ -24,8 +32,15 @@ def ingest(req: IngestRequest, db: Session = Depends(get_db)):
 
 
 @app.get("/query", response_model=QueryResponse)
-def query(kind: str | None = None, name: str | None = None, limit: int = 50, db: Session = Depends(get_db)):
-    nodes = query_nodes(db, kind=kind, name=name, limit=limit)
+def query(
+    kind: str | None = None,
+    name: str | None = None,
+    limit: int = 50,
+    run_id: int | None = None,
+    file_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    nodes = query_nodes(db, kind=kind, name=name, limit=limit, run_id=run_id, file_id=file_id)
     results = [
         {
             "id": n.id,
@@ -85,3 +100,49 @@ def get_source(req: SourceSliceRequest):
         end_byte=req.end_byte,
         text=text,
     )
+
+
+@app.get("/query/defs", response_model=QueryResponse)
+def query_defs_endpoint(
+    name: str | None = None,
+    limit: int = 50,
+    run_id: int | None = None,
+    file_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    nodes = query_defs(db, name=name, limit=limit, run_id=run_id, file_id=file_id)
+    results = [
+        {
+            "id": n.id,
+            "file_id": n.file_id,
+            "kind": n.kind,
+            "name": n.name,
+            "start": [n.start_line, n.start_col],
+            "end": [n.end_line, n.end_col],
+        }
+        for n in nodes
+    ]
+    return QueryResponse(results=results)
+
+
+@app.get("/query/calls", response_model=QueryResponse)
+def query_calls_endpoint(
+    name: str | None = None,
+    limit: int = 50,
+    run_id: int | None = None,
+    file_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    nodes = query_calls(db, name=name, limit=limit, run_id=run_id, file_id=file_id)
+    results = [
+        {
+            "id": n.id,
+            "file_id": n.file_id,
+            "kind": n.kind,
+            "name": n.name,
+            "start": [n.start_line, n.start_col],
+            "end": [n.end_line, n.end_col],
+        }
+        for n in nodes
+    ]
+    return QueryResponse(results=results)

@@ -3,7 +3,11 @@ from pathlib import Path
 
 def test_ingest_query_and_source(client, tmp_path: Path):
     sample = tmp_path / "sample.py"
-    sample.write_text('class Foo:\n    def bar(self):\n        return 42\n\n\ndef baz(x):\n    return x + 1\n', encoding="utf-8")
+    sample.write_text(
+        "class Foo:\n    def bar(self):\n        return 42\n\n\n"
+        "def baz(x):\n    return x + 1\n",
+        encoding="utf-8",
+    )
 
     payload = {
         "language": "python",
@@ -15,11 +19,16 @@ def test_ingest_query_and_source(client, tmp_path: Path):
     assert resp.status_code == 200
     data = resp.json()
     assert data["files_indexed"] == 1
+    run_id = data["run_id"]
 
     q = client.get("/query", params={"kind": "function_definition", "limit": 10})
     assert q.status_code == 200
     results = q.json()["results"]
     assert len(results) >= 1
+
+    q_run = client.get("/query", params={"kind": "function_definition", "run_id": run_id})
+    assert q_run.status_code == 200
+    assert len(q_run.json()["results"]) >= 1
 
     node_id = results[0]["id"]
     node = client.get(f"/nodes/{node_id}")
@@ -33,10 +42,17 @@ def test_ingest_query_and_source(client, tmp_path: Path):
     file_data = file_resp.json()
     assert file_data["path"] == str(sample)
 
-    source = client.post("/source", json={
-        "path": str(sample),
-        "start_byte": 0,
-        "end_byte": 30,
-    })
+    q_file = client.get("/query", params={"kind": "function_definition", "file_id": file_id})
+    assert q_file.status_code == 200
+    assert len(q_file.json()["results"]) >= 1
+
+    source = client.post(
+        "/source",
+        json={
+            "path": str(sample),
+            "start_byte": 0,
+            "end_byte": 30,
+        },
+    )
     assert source.status_code == 200
     assert "class Foo" in source.json()["text"]

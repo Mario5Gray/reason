@@ -12,7 +12,7 @@ services:
 
   api:
     volumes:
-      - /Volumes/workspace:/workspace:ro
+      - /Users/darkbit1001/workspace:/workspace:rw
     build:
       context: .
       dockerfile: Dockerfile
